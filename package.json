@@ -1,0 +1,14 @@
+{
+  "name": "everyday-motivation",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "render": "remotion still src/index.ts PairingCard out/pairing.png"
+  },
+  "dependencies": {
+    "react": "19.0.0",
+    "react-dom": "19.0.0",
+    "remotion": "4.0.347",
+    "@remotion/cli": "4.0.347"
+  }
+}
