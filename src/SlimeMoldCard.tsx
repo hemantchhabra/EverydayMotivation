@@ -171,7 +171,7 @@ const edgeLen = (e: Edge): number => {
   return Math.hypot(b.x - a.x, b.y - a.y) * 1.05;
 };
 
-export const PairingCard: React.FC = () => {
+export const SlimeMoldCard: React.FC = () => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 

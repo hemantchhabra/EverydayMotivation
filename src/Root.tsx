@@ -1,12 +1,12 @@
 import React from "react";
 import { Composition } from "remotion";
-import { PairingCard } from "./PairingCard";
+import { BowerbirdCard } from "./BowerbirdCard";
 
 export const Root: React.FC = () => {
   return (
     <Composition
       id="PairingCard"
-      component={PairingCard}
+      component={BowerbirdCard}
       durationInFrames={150}
       fps={30}
       width={1080}
