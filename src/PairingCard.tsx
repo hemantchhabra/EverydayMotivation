@@ -50,161 +50,81 @@ const fontCss = `
 }
 `;
 
-// Palette — taken from the concept's visual brief
-const INK = "#0E1014";
-const BOARD = "#13161C";
-const PHYSARUM = "#F4C430";
-const PHYSARUM_GLOW = "#FFE99A";
-const OAT = "#E8704A";
-const GRAY = "#8A8F99";
-const GRID = "#1F242D";
-const GRID_MAJOR = "#2A303B";
+// Palette — from the visual brief
+const CARBON = "#0B0C10";
+const BOARD = "#141519";
+const PRONOTUM = "#E86A2A";
+const PRONOTUM_DIM = "#B04E1E";
+const FLASH = "#F4B12A";
+const FLASH_HOT = "#FFE0A0";
+const SCORCH = "#7A2A18";
+const BONE = "#D8CBB4";
+const GRID = "#1D1F25";
+const GRID_MAJOR = "#282B33";
+const GRAY = "#7A7C83";
 
-// ── Map layout (coord space: 1080 × 800) ──────────────────────────────────
-// A stylised Greater Tokyo arrangement. Tokyo sits a touch right-of-centre;
-// outer prefectural cities radiate roughly to their real compass bearings.
-type Node = { id: string; x: number; y: number; label: string };
-const TOKYO: Node = { id: "tokyo", x: 540, y: 430, label: "Tokyo" };
-const NODES: Node[] = [
-  { id: "yokohama", x: 460, y: 555, label: "Yokohama" },
-  { id: "kawasaki", x: 495, y: 510, label: "Kawasaki" },
-  { id: "chiba", x: 740, y: 510, label: "Chiba" },
-  { id: "funabashi", x: 670, y: 470, label: "Funabashi" },
-  { id: "saitama", x: 520, y: 320, label: "Saitama" },
-  { id: "kasukabe", x: 615, y: 290, label: "Kasukabe" },
-  { id: "hachioji", x: 340, y: 490, label: "Hachioji" },
-  { id: "tachikawa", x: 390, y: 425, label: "Tachikawa" },
-  { id: "mito", x: 845, y: 295, label: "Mito" },
-  { id: "utsunomiya", x: 610, y: 195, label: "Utsunomiya" },
-  { id: "takasaki", x: 250, y: 320, label: "Takasaki" },
-  { id: "maebashi", x: 195, y: 235, label: "Maebashi" },
-  { id: "numazu", x: 200, y: 640, label: "Numazu" },
-  { id: "choshi", x: 925, y: 565, label: "Choshi" },
-  { id: "tateyama", x: 585, y: 730, label: "Tateyama" },
-  { id: "odawara", x: 335, y: 660, label: "Odawara" },
-];
+// ─────────────────────────────────────────────────────────────────────────────
+// Layout
+const FRAME = { x: 60, y: 130, w: 960, h: 720 };
 
-type Edge = { from: string; to: string; w: number; delay: number };
-const EDGES: Edge[] = [
-  // Trunks radiating from Tokyo
-  { from: "tokyo", to: "kawasaki", w: 14, delay: 0.0 },
-  { from: "tokyo", to: "saitama", w: 13, delay: 0.05 },
-  { from: "tokyo", to: "funabashi", w: 13, delay: 0.08 },
-  { from: "tokyo", to: "tachikawa", w: 12, delay: 0.1 },
-  { from: "kawasaki", to: "yokohama", w: 12, delay: 0.12 },
-  { from: "funabashi", to: "chiba", w: 11, delay: 0.14 },
+// Beetle sits in the upper half of the plate, facing right.
+// Head at left, elytra body at center, abdomen taper at right, nozzle exiting.
+const HEAD = { x: 170, y: 320, r: 28 };
+const PRONOTUM_BOX = { x: 195, y: 288, w: 90, h: 64 };
+const ELYTRA = { cx: 470, cy: 320, rx: 210, ry: 92 };
+const ABDOMEN_TIP = { x: 720, y: 320 };
+const NOZZLE = { x: 780, y: 320 };
 
-  // Secondary trunks
-  { from: "saitama", to: "kasukabe", w: 9, delay: 0.2 },
-  { from: "tachikawa", to: "hachioji", w: 9, delay: 0.22 },
-  { from: "yokohama", to: "odawara", w: 9, delay: 0.25 },
-  { from: "saitama", to: "tachikawa", w: 8, delay: 0.27 },
-  { from: "kasukabe", to: "utsunomiya", w: 8, delay: 0.3 },
-  { from: "chiba", to: "choshi", w: 8, delay: 0.32 },
-  { from: "chiba", to: "tateyama", w: 8, delay: 0.35 },
+// Internal apparatus — positioned inside the elytra/abdomen
+const RESERVOIR = { x: 400, y: 320, r: 44 };
+const VALVE = { x: 478, y: 306, w: 34, h: 28 };
+const CHAMBER = { x: 528, y: 290, w: 170, h: 60 };
 
-  // Long radiants
-  { from: "hachioji", to: "takasaki", w: 6, delay: 0.4 },
-  { from: "takasaki", to: "maebashi", w: 6, delay: 0.45 },
-  { from: "utsunomiya", to: "mito", w: 6, delay: 0.48 },
-  { from: "odawara", to: "numazu", w: 6, delay: 0.5 },
+// ─────────────────────────────────────────────────────────────────────────────
+// Pulses — spring-eased emissions from the nozzle
+const PULSE_INTERVAL = 8;
+const PULSE_LIFE = 42;
+const PULSE_SPEED = 8.5;
 
-  // Cross-links — the Physarum redundancy that gives fault-tolerance
-  { from: "takasaki", to: "saitama", w: 4, delay: 0.6 },
-  { from: "mito", to: "kasukabe", w: 4, delay: 0.62 },
-  { from: "numazu", to: "hachioji", w: 4, delay: 0.65 },
-  { from: "tateyama", to: "yokohama", w: 4, delay: 0.68 },
-  { from: "kasukabe", to: "funabashi", w: 4, delay: 0.7 },
-  { from: "maebashi", to: "takasaki", w: 3.5, delay: 0.72 },
-  { from: "yokohama", to: "funabashi", w: 3.5, delay: 0.75 },
-];
-
-// Outer-city labels (id → placement direction and offset px)
-type LabelPlacement = {
-  id: string;
-  text: string;
-  dx: number;
-  dy: number;
-  anchor: "start" | "middle" | "end";
-};
-const LABELS: LabelPlacement[] = [
-  { id: "yokohama", text: "YOKOHAMA", dx: -14, dy: 4, anchor: "end" },
-  { id: "chiba", text: "CHIBA", dx: 16, dy: 4, anchor: "start" },
-  { id: "saitama", text: "SAITAMA", dx: -14, dy: 4, anchor: "end" },
-  { id: "mito", text: "MITO", dx: 16, dy: 4, anchor: "start" },
-  { id: "utsunomiya", text: "UTSUNOMIYA", dx: 16, dy: 4, anchor: "start" },
-  { id: "maebashi", text: "MAEBASHI", dx: -14, dy: 4, anchor: "end" },
-  { id: "numazu", text: "NUMAZU", dx: -14, dy: 4, anchor: "end" },
-  { id: "tateyama", text: "TATEYAMA", dx: 0, dy: 22, anchor: "middle" },
-  { id: "choshi", text: "CHOSHI", dx: -14, dy: -10, anchor: "end" },
-];
-
-const nodeById = (id: string): Node =>
-  id === "tokyo" ? TOKYO : (NODES.find((n) => n.id === id) as Node);
-
-const hashSeed = (s: string): number => {
-  let h = 2166136261;
-  for (let i = 0; i < s.length; i++) {
-    h = (h ^ s.charCodeAt(i)) * 16777619;
+type Pulse = { born: number };
+const activePulses = (frame: number): Pulse[] => {
+  const list: Pulse[] = [];
+  for (let born = frame; born > frame - PULSE_LIFE; born -= PULSE_INTERVAL) {
+    const b = Math.floor(born / PULSE_INTERVAL) * PULSE_INTERVAL;
+    if (b <= frame && b > frame - PULSE_LIFE) list.push({ born: b });
   }
-  return ((h >>> 0) % 1000) / 1000;
+  return list;
 };
 
-const edgePath = (e: Edge): string => {
-  const a = nodeById(e.from);
-  const b = nodeById(e.to);
-  const dx = b.x - a.x;
-  const dy = b.y - a.y;
-  const len = Math.hypot(dx, dy);
-  const nx = -dy / len;
-  const ny = dx / len;
-  const seed = hashSeed(e.from + "|" + e.to);
-  const bend = (seed - 0.5) * 0.18 * len;
-  const mx = (a.x + b.x) / 2 + nx * bend;
-  const my = (a.y + b.y) / 2 + ny * bend;
-  return `M ${a.x} ${a.y} Q ${mx} ${my} ${b.x} ${b.y}`;
-};
-
-const edgeLen = (e: Edge): number => {
-  const a = nodeById(e.from);
-  const b = nodeById(e.to);
-  return Math.hypot(b.x - a.x, b.y - a.y) * 1.05;
-};
-
+// ─────────────────────────────────────────────────────────────────────────────
 export const PairingCard: React.FC = () => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  const growSpan = fps * 2.6;
-  const t = Math.max(0, frame) / growSpan;
-
-  const pulseProgress = (frame % (fps * 4)) / (fps * 4);
-
   const titleSpring = spring({
-    frame: frame - fps * 0.4,
+    frame: frame - fps * 0.35,
     fps,
     config: { damping: 200, mass: 0.8 },
   });
-
-  const hookOpacity = interpolate(frame, [fps * 1.0, fps * 1.9], [0, 1], {
+  const hookOpacity = interpolate(frame, [fps * 0.9, fps * 1.9], [0, 1], {
+    easing: Easing.out(Easing.cubic),
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+  const plateReveal = interpolate(frame, [0, fps * 0.8], [0, 1], {
     easing: Easing.out(Easing.cubic),
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
 
-  // ── Page layout (1080 × 1350 portrait) ──────────────────────────────
-  // Top metadata band: 0..110
-  // Drafting frame      : 130..841 (h 711, w 960; aspect 1.35 = 1080/800)
-  // Title block         : 880..
-  // Hook                : ~1095..
-  // Footer              : 1280..
-  const FRAME = { x: 60, y: 130, w: 960, h: 711 };
-  const MAP_W = 1080;
-  const MAP_H = 800;
-  const scale = FRAME.w / MAP_W; // = FRAME.h / MAP_H
+  const pulses = activePulses(frame);
+  const valveFlash = Math.max(
+    0,
+    1 - ((frame % PULSE_INTERVAL) / PULSE_INTERVAL) * 1.4
+  );
 
   return (
-    <AbsoluteFill style={{ backgroundColor: INK, fontFamily: inter }}>
+    <AbsoluteFill style={{ backgroundColor: CARBON, fontFamily: inter }}>
       <style>{fontCss}</style>
 
       {/* Top metadata band */}
@@ -225,11 +145,11 @@ export const PairingCard: React.FC = () => {
           fontWeight: 500,
         }}
       >
-        <span>Everyday Motivation · No. 002</span>
-        <span style={{ color: PHYSARUM }}>2026 · 06 · 24</span>
+        <span>Everyday Motivation · No. 003</span>
+        <span style={{ color: PRONOTUM }}>2026 · 07 · 02</span>
       </div>
 
-      {/* Drafting frame + map */}
+      {/* Technical plate */}
       <svg
         width={1080}
         height={1350}
@@ -241,12 +161,12 @@ export const PairingCard: React.FC = () => {
             id="grid"
             x={FRAME.x}
             y={FRAME.y}
-            width={48 * scale}
-            height={48 * scale}
+            width={40}
+            height={40}
             patternUnits="userSpaceOnUse"
           >
             <path
-              d={`M ${48 * scale} 0 L 0 0 0 ${48 * scale}`}
+              d={`M 40 0 L 0 0 0 40`}
               fill="none"
               stroke={GRID}
               strokeWidth={1}
@@ -256,44 +176,57 @@ export const PairingCard: React.FC = () => {
             id="grid-major"
             x={FRAME.x}
             y={FRAME.y}
-            width={192 * scale}
-            height={192 * scale}
+            width={160}
+            height={160}
             patternUnits="userSpaceOnUse"
           >
             <path
-              d={`M ${192 * scale} 0 L 0 0 0 ${192 * scale}`}
+              d={`M 160 0 L 0 0 0 160`}
               fill="none"
               stroke={GRID_MAJOR}
               strokeWidth={1}
             />
           </pattern>
 
-          <radialGradient id="node-glow" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor={OAT} stopOpacity={0.55} />
-            <stop offset="100%" stopColor={OAT} stopOpacity={0} />
+          <radialGradient id="plate-vignette" cx="55%" cy="45%" r="70%">
+            <stop offset="0%" stopColor="#181A20" />
+            <stop offset="100%" stopColor={BOARD} />
           </radialGradient>
 
-          <radialGradient id="board-vignette" cx="50%" cy="40%" r="70%">
-            <stop offset="0%" stopColor="#161A22" stopOpacity={1} />
-            <stop offset="100%" stopColor={BOARD} stopOpacity={1} />
+          <radialGradient id="muzzle-glow" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor={FLASH_HOT} stopOpacity={0.9} />
+            <stop offset="60%" stopColor={FLASH} stopOpacity={0.35} />
+            <stop offset="100%" stopColor={FLASH} stopOpacity={0} />
           </radialGradient>
 
-          <filter id="tube-glow" x="-20%" y="-20%" width="140%" height="140%">
-            <feGaussianBlur stdDeviation="4" result="blur" />
-            <feMerge>
-              <feMergeNode in="blur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
+          <radialGradient id="pulse-body" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor={FLASH_HOT} stopOpacity={0.95} />
+            <stop offset="55%" stopColor={FLASH} stopOpacity={0.75} />
+            <stop offset="100%" stopColor={FLASH} stopOpacity={0} />
+          </radialGradient>
+
+          <linearGradient id="chamber-fill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#3A1610" />
+            <stop offset="100%" stopColor={SCORCH} />
+          </linearGradient>
+
+          <linearGradient id="elytra-fill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#1A1216" />
+            <stop offset="100%" stopColor={CARBON} />
+          </linearGradient>
+
+          <filter id="soft-glow" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="6" />
           </filter>
         </defs>
 
-        {/* Drafting board */}
+        {/* Plate background */}
         <rect
           x={FRAME.x}
           y={FRAME.y}
           width={FRAME.w}
           height={FRAME.h}
-          fill="url(#board-vignette)"
+          fill="url(#plate-vignette)"
         />
         <rect
           x={FRAME.x}
@@ -301,6 +234,7 @@ export const PairingCard: React.FC = () => {
           width={FRAME.w}
           height={FRAME.h}
           fill="url(#grid)"
+          opacity={plateReveal}
         />
         <rect
           x={FRAME.x}
@@ -308,20 +242,21 @@ export const PairingCard: React.FC = () => {
           width={FRAME.w}
           height={FRAME.h}
           fill="url(#grid-major)"
+          opacity={plateReveal}
         />
 
-        {/* Inner thin border */}
+        {/* Inner border */}
         <rect
           x={FRAME.x + 0.5}
           y={FRAME.y + 0.5}
           width={FRAME.w - 1}
           height={FRAME.h - 1}
           fill="none"
-          stroke="#2B313C"
+          stroke="#2A2D35"
           strokeWidth={1}
         />
 
-        {/* Corner crop marks */}
+        {/* Corner marks */}
         {(
           [
             [FRAME.x, FRAME.y, 1, 1],
@@ -330,245 +265,525 @@ export const PairingCard: React.FC = () => {
             [FRAME.x + FRAME.w, FRAME.y + FRAME.h, -1, -1],
           ] as const
         ).map(([cx, cy, sx, sy], i) => (
-          <g key={i} stroke={OAT} strokeWidth={1.5} fill="none">
+          <g key={i} stroke={PRONOTUM} strokeWidth={1.5} fill="none">
             <line x1={cx} y1={cy} x2={cx + sx * 26} y2={cy} />
             <line x1={cx} y1={cy} x2={cx} y2={cy + sy * 26} />
           </g>
         ))}
 
-        {/* N marker */}
+        {/* Plate label */}
         <g
           transform={`translate(${FRAME.x + 26}, ${FRAME.y + 30})`}
           fill={GRAY}
           fontFamily={inter}
           fontWeight={600}
           fontSize={11}
-          letterSpacing={3}
+          letterSpacing={3.5}
         >
-          <text textAnchor="start">N</text>
-          <line
-            x1={5}
-            y1={6}
-            x2={5}
-            y2={24}
-            stroke={GRAY}
-            strokeWidth={1.2}
-          />
-          <polygon points={`2,9 5,2 8,9`} fill={OAT} />
-        </g>
-
-        {/* Scale bar */}
-        <g
-          transform={`translate(${FRAME.x + FRAME.w - 160}, ${
-            FRAME.y + FRAME.h - 28
-          })`}
-          stroke={GRAY}
-          fill={GRAY}
-          fontFamily={inter}
-          fontSize={10}
-          letterSpacing={3}
-          fontWeight={500}
-        >
-          <line x1={0} y1={0} x2={100} y2={0} strokeWidth={1.2} />
-          <line x1={0} y1={-5} x2={0} y2={5} strokeWidth={1.2} />
-          <line x1={50} y1={-3} x2={50} y2={3} strokeWidth={1.2} />
-          <line x1={100} y1={-5} x2={100} y2={5} strokeWidth={1.2} />
-          <text x={110} y={4} stroke="none">
-            50 KM
+          <text textAnchor="start">PLATE I</text>
+          <text
+            x={0}
+            y={16}
+            fill={GRAY}
+            opacity={0.7}
+            fontSize={10}
+            letterSpacing={3}
+            fontWeight={500}
+          >
+            BRACHININI · DEFENSIVE APPARATUS
           </text>
         </g>
 
-        {/* Map content: scale 1080×800 coords into FRAME */}
-        <g transform={`translate(${FRAME.x}, ${FRAME.y}) scale(${scale})`}>
-          {/* Edges: outer glow layer first */}
-          {EDGES.map((e, i) => {
-            const len = edgeLen(e);
-            const localT = (t - e.delay) / 0.18;
-            const grow = Math.max(0, Math.min(1, localT));
-            const eased = 1 - Math.pow(1 - grow, 3);
-            const dashOffset = len * (1 - eased);
+        <g
+          transform={`translate(${FRAME.x + FRAME.w - 26}, ${FRAME.y + 30})`}
+          fill={GRAY}
+          fontFamily={inter}
+          fontSize={11}
+          letterSpacing={3.5}
+          fontWeight={600}
+          textAnchor="end"
+        >
+          <text>PROFILE · L 1:1</text>
+        </g>
+
+        {/* ═════════════════════════════════════════════════════════════════
+             Beetle profile (facing right), positioned in upper half of plate.
+             Group is translated into the plate coord system so element
+             coords are LOCAL (0..960 wide, 0..720 tall).
+             ═════════════════════════════════════════════════════════════════ */}
+        <g transform={`translate(${FRAME.x}, ${FRAME.y})`} opacity={plateReveal}>
+          {/* Antennae */}
+          <g stroke={PRONOTUM} strokeWidth={1.4} fill="none" strokeLinecap="round">
+            <path
+              d={`M ${HEAD.x - 6} ${HEAD.y - 20}
+                  C ${HEAD.x - 30} ${HEAD.y - 55},
+                    ${HEAD.x - 60} ${HEAD.y - 80},
+                    ${HEAD.x - 90} ${HEAD.y - 100}`}
+            />
+            <path
+              d={`M ${HEAD.x + 4} ${HEAD.y - 22}
+                  C ${HEAD.x + 4} ${HEAD.y - 60},
+                    ${HEAD.x - 20} ${HEAD.y - 90},
+                    ${HEAD.x - 50} ${HEAD.y - 118}`}
+            />
+            {/* club tips */}
+            <circle cx={HEAD.x - 90} cy={HEAD.y - 100} r={2.5} fill={PRONOTUM} />
+            <circle cx={HEAD.x - 50} cy={HEAD.y - 118} r={2.5} fill={PRONOTUM} />
+          </g>
+
+          {/* Head */}
+          <circle
+            cx={HEAD.x}
+            cy={HEAD.y}
+            r={HEAD.r}
+            fill={CARBON}
+            stroke={PRONOTUM}
+            strokeWidth={1.6}
+          />
+          <circle
+            cx={HEAD.x + 8}
+            cy={HEAD.y - 6}
+            r={5}
+            fill={PRONOTUM}
+            opacity={0.9}
+          />
+
+          {/* Pronotum (thorax plate) */}
+          <path
+            d={`M ${PRONOTUM_BOX.x} ${PRONOTUM_BOX.y + PRONOTUM_BOX.h}
+                Q ${PRONOTUM_BOX.x + 8} ${PRONOTUM_BOX.y - 4},
+                  ${PRONOTUM_BOX.x + PRONOTUM_BOX.w * 0.55} ${PRONOTUM_BOX.y}
+                Q ${PRONOTUM_BOX.x + PRONOTUM_BOX.w} ${PRONOTUM_BOX.y + 4},
+                  ${PRONOTUM_BOX.x + PRONOTUM_BOX.w + 6} ${PRONOTUM_BOX.y + PRONOTUM_BOX.h - 6}
+                Z`}
+            fill={PRONOTUM_DIM}
+            stroke={PRONOTUM}
+            strokeWidth={1.6}
+          />
+
+          {/* Elytra (main body) — an oval with a tapering abdomen tail */}
+          <path
+            d={`M ${ELYTRA.cx - ELYTRA.rx} ${ELYTRA.cy}
+                Q ${ELYTRA.cx - ELYTRA.rx} ${ELYTRA.cy - ELYTRA.ry * 1.05},
+                  ${ELYTRA.cx} ${ELYTRA.cy - ELYTRA.ry}
+                Q ${ELYTRA.cx + ELYTRA.rx * 0.9} ${ELYTRA.cy - ELYTRA.ry * 0.95},
+                  ${ABDOMEN_TIP.x} ${ABDOMEN_TIP.y - 34}
+                Q ${ABDOMEN_TIP.x + 40} ${ABDOMEN_TIP.y - 20},
+                  ${NOZZLE.x - 6} ${NOZZLE.y - 8}
+                L ${NOZZLE.x - 6} ${NOZZLE.y + 8}
+                Q ${ABDOMEN_TIP.x + 40} ${ABDOMEN_TIP.y + 20},
+                  ${ABDOMEN_TIP.x} ${ABDOMEN_TIP.y + 34}
+                Q ${ELYTRA.cx + ELYTRA.rx * 0.9} ${ELYTRA.cy + ELYTRA.ry * 0.95},
+                  ${ELYTRA.cx} ${ELYTRA.cy + ELYTRA.ry}
+                Q ${ELYTRA.cx - ELYTRA.rx} ${ELYTRA.cy + ELYTRA.ry * 1.05},
+                  ${ELYTRA.cx - ELYTRA.rx} ${ELYTRA.cy}
+                Z`}
+            fill="url(#elytra-fill)"
+            stroke={PRONOTUM}
+            strokeWidth={1.6}
+          />
+          {/* Elytra median seam */}
+          <line
+            x1={ELYTRA.cx - ELYTRA.rx + 16}
+            y1={ELYTRA.cy}
+            x2={NOZZLE.x - 20}
+            y2={NOZZLE.y}
+            stroke={PRONOTUM}
+            strokeWidth={0.8}
+            strokeDasharray="4 6"
+            opacity={0.55}
+          />
+
+          {/* Legs — three pairs beneath the body, coxa → femur → tibia */}
+          <g stroke={PRONOTUM} strokeWidth={2.4} strokeLinecap="round" fill="none">
+            <path d={`M 260 ${ELYTRA.cy + ELYTRA.ry - 8} L 232 ${ELYTRA.cy + ELYTRA.ry + 28} L 246 ${ELYTRA.cy + ELYTRA.ry + 42}`} />
+            <path d={`M 360 ${ELYTRA.cy + ELYTRA.ry - 4} L 352 ${ELYTRA.cy + ELYTRA.ry + 34} L 370 ${ELYTRA.cy + ELYTRA.ry + 46}`} />
+            <path d={`M 500 ${ELYTRA.cy + ELYTRA.ry - 8} L 512 ${ELYTRA.cy + ELYTRA.ry + 30} L 530 ${ELYTRA.cy + ELYTRA.ry + 42}`} />
+          </g>
+
+          {/* ─── Internal cutaway apparatus ─────────────────────────────── */}
+
+          {/* Reservoir (A) — hydroquinones + H₂O₂ */}
+          <circle
+            cx={RESERVOIR.x}
+            cy={RESERVOIR.y}
+            r={RESERVOIR.r}
+            fill={CARBON}
+            stroke={BONE}
+            strokeWidth={1.4}
+          />
+          <circle
+            cx={RESERVOIR.x}
+            cy={RESERVOIR.y}
+            r={RESERVOIR.r - 5}
+            fill="none"
+            stroke={BONE}
+            strokeWidth={0.6}
+            strokeDasharray="2 5"
+            opacity={0.55}
+          />
+          {Array.from({ length: 12 }).map((_, i) => {
+            const a = (i / 12) * Math.PI * 2 + (frame % 200) * 0.005;
+            const rr = 14 + ((i * 11) % 22);
+            const x = RESERVOIR.x + Math.cos(a) * rr;
+            const y = RESERVOIR.y + Math.sin(a) * rr;
+            const isPeroxide = i % 2 === 0;
             return (
-              <path
-                key={`glow-${i}`}
-                d={edgePath(e)}
-                stroke={PHYSARUM}
-                strokeWidth={e.w + 6}
-                strokeOpacity={0.18 * eased}
-                fill="none"
-                strokeLinecap="round"
-                filter="url(#tube-glow)"
-                strokeDasharray={len}
-                strokeDashoffset={dashOffset}
+              <circle
+                key={`mol-${i}`}
+                cx={x}
+                cy={y}
+                r={isPeroxide ? 2.2 : 1.5}
+                fill={isPeroxide ? BONE : PRONOTUM}
+                opacity={0.75}
               />
             );
           })}
-          {/* Edges: cores */}
-          {EDGES.map((e, i) => {
-            const len = edgeLen(e);
-            const localT = (t - e.delay) / 0.18;
-            const grow = Math.max(0, Math.min(1, localT));
-            const eased = 1 - Math.pow(1 - grow, 3);
-            const dashOffset = len * (1 - eased);
-            return (
-              <g key={`core-${i}`}>
-                <path
-                  d={edgePath(e)}
-                  stroke={PHYSARUM}
-                  strokeWidth={e.w}
-                  fill="none"
-                  strokeLinecap="round"
-                  strokeDasharray={len}
-                  strokeDashoffset={dashOffset}
-                />
-                <path
-                  d={edgePath(e)}
-                  stroke={PHYSARUM_GLOW}
-                  strokeWidth={Math.max(1, e.w - 4)}
-                  strokeOpacity={0.55}
-                  fill="none"
-                  strokeLinecap="round"
-                  strokeDasharray={len}
-                  strokeDashoffset={dashOffset}
-                />
-              </g>
-            );
-          })}
 
-          {/* Pulse along main trunk */}
-          {t > 0.9 &&
-            (() => {
-              const trunk = ["tokyo", "kawasaki", "yokohama", "odawara"].map(
-                nodeById,
-              );
-              const segs = trunk
-                .slice(1)
-                .map((n, i) => Math.hypot(n.x - trunk[i].x, n.y - trunk[i].y));
-              const total = segs.reduce((a, b) => a + b, 0);
-              const along = pulseProgress * total;
-              let acc = 0;
-              let p = trunk[0];
-              for (let i = 0; i < segs.length; i++) {
-                if (acc + segs[i] >= along) {
-                  const f = (along - acc) / segs[i];
-                  p = {
-                    id: "p",
-                    label: "",
-                    x: trunk[i].x + (trunk[i + 1].x - trunk[i].x) * f,
-                    y: trunk[i].y + (trunk[i + 1].y - trunk[i].y) * f,
-                  };
-                  break;
-                }
-                acc += segs[i];
-              }
-              const fadeIn = Math.min(1, (t - 0.9) * 4);
-              return (
-                <g opacity={fadeIn}>
-                  <circle
-                    cx={p.x}
-                    cy={p.y}
-                    r={14}
-                    fill={PHYSARUM_GLOW}
-                    opacity={0.35}
-                  />
-                  <circle cx={p.x} cy={p.y} r={5} fill="#FFFFFF" />
-                </g>
-              );
-            })()}
+          {/* Duct from reservoir to valve */}
+          <path
+            d={`M ${RESERVOIR.x + RESERVOIR.r - 2} ${RESERVOIR.y}
+                L ${VALVE.x} ${VALVE.y + VALVE.h / 2}`}
+            stroke={BONE}
+            strokeWidth={5}
+            fill="none"
+          />
+          <path
+            d={`M ${RESERVOIR.x + RESERVOIR.r - 2} ${RESERVOIR.y}
+                L ${VALVE.x} ${VALVE.y + VALVE.h / 2}`}
+            stroke={CARBON}
+            strokeWidth={2.2}
+            fill="none"
+          />
 
-          {/* Nodes (oat flakes) */}
-          {[TOKYO, ...NODES].map((n) => {
-            const isCenter = n.id === "tokyo";
-            const apparition = Math.min(
-              1,
-              Math.max(0, t - (isCenter ? 0 : 0.04)) * 3,
-            );
-            const r = isCenter ? 12 : 6;
-            return (
-              <g key={n.id} opacity={apparition}>
-                <circle
-                  cx={n.x}
-                  cy={n.y}
-                  r={r * 2.8}
-                  fill="url(#node-glow)"
-                />
-                <circle
-                  cx={n.x}
-                  cy={n.y}
-                  r={r}
-                  fill={OAT}
-                  stroke={INK}
-                  strokeWidth={isCenter ? 3 : 2}
-                />
-              </g>
-            );
-          })}
+          {/* Valve */}
+          <rect
+            x={VALVE.x}
+            y={VALVE.y}
+            width={VALVE.w}
+            height={VALVE.h}
+            fill={CARBON}
+            stroke={BONE}
+            strokeWidth={1.4}
+          />
+          <rect
+            x={VALVE.x + 4}
+            y={VALVE.y + 4}
+            width={VALVE.w - 8}
+            height={VALVE.h - 8}
+            fill={FLASH}
+            opacity={valveFlash * 0.95}
+          />
 
-          {/* Outer-city labels */}
-          {LABELS.map((l) => {
-            const n = nodeById(l.id);
-            const op = Math.min(1, Math.max(0, t - 0.5) * 2);
-            return (
-              <text
-                key={`lbl-${l.id}`}
-                x={n.x + l.dx}
-                y={n.y + l.dy}
-                textAnchor={l.anchor}
-                fill={GRAY}
-                fontFamily={inter}
-                fontSize={11}
-                fontWeight={500}
-                letterSpacing={2.4}
-                opacity={op}
-              >
-                {l.text}
-              </text>
-            );
-          })}
-
-          {/* Tokyo callout — leader into the empty NE quadrant */}
-          <g opacity={Math.min(1, Math.max(0, t - 0.05) * 3)}>
+          {/* Reaction chamber (B) */}
+          <rect
+            x={CHAMBER.x}
+            y={CHAMBER.y}
+            width={CHAMBER.w}
+            height={CHAMBER.h}
+            rx={8}
+            fill="url(#chamber-fill)"
+            stroke={BONE}
+            strokeWidth={1.6}
+          />
+          {[0.2, 0.4, 0.6, 0.8].map((f) => (
             <line
-              x1={TOKYO.x + 10}
-              y1={TOKYO.y - 6}
-              x2={TOKYO.x + 130}
-              y2={TOKYO.y - 80}
-              stroke={OAT}
-              strokeWidth={1.2}
+              key={`rib-${f}`}
+              x1={CHAMBER.x + CHAMBER.w * f}
+              y1={CHAMBER.y + 4}
+              x2={CHAMBER.x + CHAMBER.w * f}
+              y2={CHAMBER.y + CHAMBER.h - 4}
+              stroke={BONE}
+              strokeWidth={0.8}
+              opacity={0.55}
+            />
+          ))}
+          {/* Boiling bubbles inside the chamber */}
+          {Array.from({ length: 6 }).map((_, i) => {
+            const bx =
+              CHAMBER.x + 14 + ((i * 27 + (frame * 1.2)) % (CHAMBER.w - 28));
+            const by =
+              CHAMBER.y + CHAMBER.h - 10 - ((frame * 0.9 + i * 13) % (CHAMBER.h - 20));
+            return (
+              <circle
+                key={`bub-${i}`}
+                cx={bx}
+                cy={by}
+                r={1.6 + (i % 3)}
+                fill={FLASH_HOT}
+                opacity={0.85}
+              />
+            );
+          })}
+
+          {/* Nozzle — protrudes past the abdomen tip */}
+          <path
+            d={`M ${CHAMBER.x + CHAMBER.w} ${CHAMBER.y + 12}
+                L ${NOZZLE.x - 4} ${NOZZLE.y - 14}
+                L ${NOZZLE.x + 14} ${NOZZLE.y}
+                L ${NOZZLE.x - 4} ${NOZZLE.y + 14}
+                L ${CHAMBER.x + CHAMBER.w} ${CHAMBER.y + CHAMBER.h - 12}
+                Z`}
+            fill={CARBON}
+            stroke={BONE}
+            strokeWidth={1.4}
+          />
+
+          {/* ─── Callout leaders (kept clear of body) ───────────────────── */}
+
+          {/* A · RESERVOIR — up and left */}
+          <g stroke={BONE} strokeWidth={1} fill="none">
+            <line
+              x1={RESERVOIR.x - 20}
+              y1={RESERVOIR.y - RESERVOIR.r + 10}
+              x2={RESERVOIR.x - 60}
+              y2={RESERVOIR.y - RESERVOIR.r - 60}
             />
             <line
-              x1={TOKYO.x + 130}
-              y1={TOKYO.y - 80}
-              x2={TOKYO.x + 180}
-              y2={TOKYO.y - 80}
-              stroke={OAT}
-              strokeWidth={1.2}
+              x1={RESERVOIR.x - 60}
+              y1={RESERVOIR.y - RESERVOIR.r - 60}
+              x2={RESERVOIR.x + 40}
+              y2={RESERVOIR.y - RESERVOIR.r - 60}
             />
-            <rect
-              x={TOKYO.x + 178}
-              y={TOKYO.y - 92}
-              width={94}
-              height={24}
-              rx={2}
-              fill={INK}
-              stroke={OAT}
-              strokeWidth={1.2}
-            />
+          </g>
+          <g
+            transform={`translate(${RESERVOIR.x + 44}, ${RESERVOIR.y - RESERVOIR.r - 66})`}
+            fontFamily={inter}
+          >
             <text
-              x={TOKYO.x + 225}
-              y={TOKYO.y - 76}
-              textAnchor="middle"
-              fill={OAT}
-              fontFamily={inter}
-              fontSize={11}
+              fill={BONE}
+              fontSize={12}
+              letterSpacing={3}
               fontWeight={600}
-              letterSpacing={3.5}
             >
-              TOKYO
+              A · RESERVOIR
+            </text>
+            <text
+              y={16}
+              fill={GRAY}
+              fontSize={10}
+              letterSpacing={2}
+              fontWeight={500}
+            >
+              HYDROQUINONES + H₂O₂
+            </text>
+          </g>
+
+          {/* B · REACTION CHAMBER — down and right of chamber, tucked under abdomen */}
+          <g stroke={BONE} strokeWidth={1} fill="none">
+            <line
+              x1={CHAMBER.x + CHAMBER.w * 0.7}
+              y1={CHAMBER.y + CHAMBER.h + 4}
+              x2={CHAMBER.x + CHAMBER.w * 0.7}
+              y2={CHAMBER.y + CHAMBER.h + 180}
+            />
+            <line
+              x1={CHAMBER.x + CHAMBER.w * 0.7}
+              y1={CHAMBER.y + CHAMBER.h + 180}
+              x2={CHAMBER.x + CHAMBER.w + 30}
+              y2={CHAMBER.y + CHAMBER.h + 180}
+            />
+          </g>
+          <g
+            transform={`translate(${CHAMBER.x + CHAMBER.w + 36}, ${CHAMBER.y + CHAMBER.h + 174})`}
+            fontFamily={inter}
+          >
+            <text
+              fill={BONE}
+              fontSize={12}
+              letterSpacing={3}
+              fontWeight={600}
+            >
+              B · REACTION CHAMBER
+            </text>
+            <text
+              y={16}
+              fill={GRAY}
+              fontSize={10}
+              letterSpacing={2}
+              fontWeight={500}
+            >
+              CATALASE · PEROXIDASE
+            </text>
+          </g>
+
+          {/* C · VALVE — down and left */}
+          <g stroke={BONE} strokeWidth={1} fill="none">
+            <line
+              x1={VALVE.x + VALVE.w / 2}
+              y1={VALVE.y + VALVE.h}
+              x2={VALVE.x + VALVE.w / 2}
+              y2={VALVE.y + VALVE.h + 180}
+            />
+            <line
+              x1={VALVE.x + VALVE.w / 2}
+              y1={VALVE.y + VALVE.h + 180}
+              x2={VALVE.x - 100}
+              y2={VALVE.y + VALVE.h + 180}
+            />
+          </g>
+          <g
+            transform={`translate(${VALVE.x - 106}, ${VALVE.y + VALVE.h + 174})`}
+            fontFamily={inter}
+            textAnchor="end"
+          >
+            <text fill={BONE} fontSize={12} letterSpacing={3} fontWeight={600}>
+              C · VALVE
+            </text>
+            <text
+              y={16}
+              fill={GRAY}
+              fontSize={10}
+              letterSpacing={2}
+              fontWeight={500}
+            >
+              PULSED · ≈ 500 HZ
             </text>
           </g>
         </g>
 
-        {/* Caption strip just below the drafting frame */}
+        {/* ═════════════════════════════════════════════════════════════════
+             Pulsed jet — drawn in plate coord space (translated)
+             ═════════════════════════════════════════════════════════════════ */}
+        <g transform={`translate(${FRAME.x}, ${FRAME.y})`}>
+          <circle
+            cx={NOZZLE.x + 14}
+            cy={NOZZLE.y}
+            r={28 + valveFlash * 12}
+            fill="url(#muzzle-glow)"
+          />
+          {pulses.map((p) => {
+            const age = frame - p.born;
+            const life = age / PULSE_LIFE;
+            const dx = age * PULSE_SPEED;
+            const cx = NOZZLE.x + 20 + dx;
+            const cy = NOZZLE.y + Math.sin(age * 0.32) * 3;
+            const rBody = 12 + life * 30;
+            const rHalo = 20 + life * 62;
+            const opBody = Math.max(0, 1 - life * 1.2);
+            const opHalo = Math.max(0, 0.5 - life * 0.65);
+            const opHot = Math.max(0, 0.95 - life * 2.4);
+            const hotR = Math.max(1, 7 - life * 7);
+            if (cx > FRAME.w - 30) return null;
+            return (
+              <g key={`pulse-${p.born}`}>
+                <circle
+                  cx={cx}
+                  cy={cy}
+                  r={rHalo}
+                  fill={FLASH}
+                  opacity={opHalo}
+                  filter="url(#soft-glow)"
+                />
+                <circle
+                  cx={cx}
+                  cy={cy}
+                  r={rBody}
+                  fill="url(#pulse-body)"
+                  opacity={opBody}
+                />
+                {opHot > 0 && (
+                  <circle cx={cx} cy={cy} r={hotR} fill={FLASH_HOT} opacity={opHot} />
+                )}
+              </g>
+            );
+          })}
+
+          {/* Temperature callout above jet — pulled inward to clear the plate corner */}
+          <g opacity={plateReveal}>
+            <line
+              x1={NOZZLE.x + 70}
+              y1={NOZZLE.y - 20}
+              x2={NOZZLE.x + 70}
+              y2={NOZZLE.y - 88}
+              stroke={FLASH}
+              strokeWidth={1.2}
+            />
+            <rect
+              x={NOZZLE.x + 6}
+              y={NOZZLE.y - 122}
+              width={128}
+              height={34}
+              rx={2}
+              fill={CARBON}
+              stroke={FLASH}
+              strokeWidth={1.2}
+            />
+            <text
+              x={NOZZLE.x + 70}
+              y={NOZZLE.y - 100}
+              fill={FLASH}
+              fontFamily={inter}
+              fontSize={13}
+              letterSpacing={4}
+              fontWeight={700}
+              textAnchor="middle"
+            >
+              ≈ 100 °C JET
+            </text>
+          </g>
+        </g>
+
+        {/* ═════════════════════════════════════════════════════════════════
+             Reaction equation — fills the lower plate
+             ═════════════════════════════════════════════════════════════════ */}
+        <g
+          transform={`translate(${FRAME.x + FRAME.w / 2}, ${FRAME.y + 626})`}
+          opacity={plateReveal}
+          fontFamily={inter}
+          textAnchor="middle"
+        >
+          <text
+            fill={GRAY}
+            fontSize={11}
+            letterSpacing={4}
+            fontWeight={600}
+            y={-48}
+          >
+            REACTION · CATALYSED IN CHAMBER B
+          </text>
+
+          {/* Equation as a single line, generous tracking */}
+          <g fontFamily={playfair}>
+            <text y={0} fill={BONE} fontSize={44} letterSpacing={2}>
+              <tspan>C</tspan>
+              <tspan fontSize={26} dy={12}>6</tspan>
+              <tspan dy={-12}>H</tspan>
+              <tspan fontSize={26} dy={12}>6</tspan>
+              <tspan dy={-12}>O</tspan>
+              <tspan fontSize={26} dy={12}>2</tspan>
+              <tspan dy={-12}>{"   +   "}</tspan>
+              <tspan>H</tspan>
+              <tspan fontSize={26} dy={12}>2</tspan>
+              <tspan dy={-12}>O</tspan>
+              <tspan fontSize={26} dy={12}>2</tspan>
+              <tspan dy={-12} fill={PRONOTUM}>{"   →   "}</tspan>
+              <tspan fill={FLASH}>C</tspan>
+              <tspan fill={FLASH} fontSize={26} dy={12}>6</tspan>
+              <tspan fill={FLASH} dy={-12}>H</tspan>
+              <tspan fill={FLASH} fontSize={26} dy={12}>4</tspan>
+              <tspan fill={FLASH} dy={-12}>O</tspan>
+              <tspan fill={FLASH} fontSize={26} dy={12}>2</tspan>
+              <tspan dy={-12}>{"   +   "}</tspan>
+              <tspan>2 H</tspan>
+              <tspan fontSize={26} dy={12}>2</tspan>
+              <tspan dy={-12}>O</tspan>
+              <tspan dy={0}>{"   +   "}</tspan>
+              <tspan fill={PRONOTUM} fontStyle="italic">Δ</tspan>
+            </text>
+          </g>
+
+          <g fill={GRAY} fontSize={11} letterSpacing={3} fontWeight={500}>
+            <text x={-260} y={42} textAnchor="start">HYDROQUINONE</text>
+            <text x={-90} y={42} textAnchor="start">H₂O₂</text>
+            <text x={80} y={42} textAnchor="start" fill={FLASH} opacity={0.9}>
+              BENZOQUINONE
+            </text>
+            <text x={300} y={42} textAnchor="start">STEAM + HEAT</text>
+          </g>
+        </g>
+
+        {/* Caption strip below plate */}
         <g
           transform={`translate(${FRAME.x}, ${FRAME.y + FRAME.h + 22})`}
           fill={GRAY}
@@ -577,14 +792,14 @@ export const PairingCard: React.FC = () => {
           letterSpacing={3}
           fontWeight={500}
         >
-          <text>FIG. 1 · TUBE NETWORK GROWN BY P. POLYCEPHALUM, 26 H</text>
+          <text>FIG. 1 · PULSED BENZOQUINONE EJECTION, LATERAL VIEW</text>
           <text
             x={FRAME.w}
             textAnchor="end"
-            fill={PHYSARUM}
-            opacity={0.85}
+            fill={PRONOTUM}
+            opacity={0.9}
           >
-            REPLICA OF TOKYO RAIL TOPOLOGY
+            EXOTHERMIC · SELF-REGULATING
           </text>
         </g>
       </svg>
@@ -600,13 +815,13 @@ export const PairingCard: React.FC = () => {
           transform: `translateY(${interpolate(
             titleSpring,
             [0, 1],
-            [16, 0],
+            [16, 0]
           )}px)`,
         }}
       >
         <div
           style={{
-            color: PHYSARUM,
+            color: PRONOTUM,
             fontFamily: inter,
             fontSize: 13,
             letterSpacing: 6,
@@ -617,7 +832,7 @@ export const PairingCard: React.FC = () => {
         >
           Role <span style={{ color: GRAY, margin: "0 4px" }}>/</span>
           <span style={{ color: "#EDEDEF", letterSpacing: 5 }}>
-            Urban Planner
+            Pyrotechnician
           </span>
         </div>
 
@@ -632,9 +847,9 @@ export const PairingCard: React.FC = () => {
             fontStyle: "italic",
           }}
         >
-          The brainless
+          The pocket
           <br />
-          city planner.
+          pyrotechnician.
         </div>
 
         <div
@@ -649,13 +864,18 @@ export const PairingCard: React.FC = () => {
             opacity: hookOpacity,
           }}
         >
-          Given oat flakes at the locations of 36 cities around Tokyo,{" "}
-          <span style={{ color: PHYSARUM, fontWeight: 600 }}>
-            Physarum polycephalum
+          Inside a reinforced abdominal chamber, the{" "}
+          <span style={{ color: PRONOTUM, fontWeight: 600 }}>
+            bombardier beetle
           </span>{" "}
-          — a single-celled slime mold with no nervous system — grew a
-          transport network whose length, efficiency, and fault-tolerance
-          matched the Greater Tokyo rail system.
+          mixes hydroquinones with hydrogen peroxide, catalyses an explosive
+          oxidation, and fires a{" "}
+          <span style={{ color: FLASH, fontWeight: 600 }}>≈ 100 °C</span> jet of
+          benzoquinones in{" "}
+          <span style={{ color: FLASH, fontWeight: 600 }}>
+            hundreds of pulses per second
+          </span>
+          .
         </div>
       </div>
 
@@ -677,9 +897,9 @@ export const PairingCard: React.FC = () => {
           fontWeight: 500,
         }}
       >
-        <span>Tero et al. · Science 327 (2010) 439–442</span>
+        <span>Arndt et al. · Science 348 (2015) 563–565</span>
         <span>
-          <span style={{ color: OAT }}>●</span> Oat flake = City
+          <span style={{ color: FLASH }}>●</span> Pulse = ejection event
         </span>
       </div>
     </AbsoluteFill>
